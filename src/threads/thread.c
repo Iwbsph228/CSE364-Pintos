@@ -139,8 +139,6 @@ thread_tick (void)
   else
     kernel_ticks++;
 
-  thread_awake();
-
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
@@ -324,7 +322,7 @@ thread_yield (void)
 /* If the thread in sleep_list is satisfying the condition
    that ticks over than sleep_end_ticks, save in ready list
    and change the state into ready. */
-void thread_awake (void) {
+void thread_awake (int64_t ticks) {
   // check the interrupt is off state
   ASSERT(intr_get_level() == INTR_OFF);
   // if sleep_list is empty, then return
@@ -333,11 +331,11 @@ void thread_awake (void) {
   
   struct list_elem *e;
   for (e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)) {
-    struct thread *st = list_entry(e, struct thread, sleepelem);
+    struct thread *st = list_entry(e, struct thread, elem);
     if (st->sleep_end_tick <= timer_ticks()) {
       /* set sleep_end_tick initialize, and remove thread in sleep list and unblock */
       st->sleep_end_tick = 0;
-      list_remove (&st->sleepelem);
+      list_remove (&st->elem);
       thread_unblock(st);
     }
   }

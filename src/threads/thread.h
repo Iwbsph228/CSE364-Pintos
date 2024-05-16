@@ -92,7 +92,6 @@ struct thread
 
     /* For project1 - task: Alarm clock */
     int64_t sleep_end_tick;             /* ticks that threads should sleep until. */
-    struct list_elem sleepelem;          /* List elements that sleeping threads list */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -131,7 +130,7 @@ void thread_exit (void) NO_RETURN;
 void thread_yield (void);
 
 /* For project1 - task: Alarm clock */
-void thread_awake ();
+void thread_awake (int64_t ticks);
 void thread_sleep (int64_t ticks);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
