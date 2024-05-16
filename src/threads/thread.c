@@ -364,7 +364,7 @@ void thread_sleep (int64_t ticks) {
 
   /* save thread in sleep_list with ticks, and block the thread */
   cur->sleep_end_tick = ticks + timer_ticks();
-  list_push_back(&sleep_list, &cur->sleepelem);
+  list_push_back(&sleep_list, &cur->elem);
   thread_block();
 
   intr_set_level(old_level);  // make interrupt on
