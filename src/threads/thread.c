@@ -206,6 +206,14 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* test the priority of creating thread and ready_list's front thread */
+  if (!list_empty(&ready_list)){
+    int create_priority = thread_current ()->priority;
+    int list_priority = list_entry(list_front(&ready_list), struct thread, elem)->priority;
+    if (create_priority < list_priority)
+      thread_yield ();
+  }
+    
   return tid;
 }
 
@@ -242,7 +250,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &t->elem, compare_priority, 0);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -313,7 +321,8 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem, compare_priority, 0);
+    //list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -378,11 +387,26 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+/* For project1 - task: priority */
+bool compare_priority(const struct list_elem *a, const struct list_elem *b, void *aux) {
+  struct thread *t1 = list_entry(a, struct thread, elem);
+  struct thread *t2 = list_entry(b, struct thread, elem);
+  if (t1->priority < t2->priority) // if t1's priority is up than t2, return true
+    return true;
+  return false;
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  /* test the thread's new priority and ready_list's front thread */
+  if (!list_empty(&ready_list)){
+    int list_priority = list_entry(list_front(&ready_list), struct thread, elem)->priority;
+    if (new_priority < list_priority)
+      thread_yield ();
+  }
 }
 
 /* Returns the current thread's priority. */
