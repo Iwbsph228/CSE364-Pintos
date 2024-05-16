@@ -4,6 +4,7 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include "devices/timer.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -27,6 +28,8 @@ static struct list ready_list;
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
+
+static struct list wait_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -92,12 +95,14 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&wait_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  initial_thread->sleep_end_tick = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -133,6 +138,8 @@ thread_tick (void)
 #endif
   else
     kernel_ticks++;
+
+  thread_awake();
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
@@ -312,6 +319,21 @@ thread_yield (void)
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
+}
+
+void thread_awake (void) {
+  // check the interrupt is off state
+  ASSERT(intr_get_level() == INTR_OFF);
+
+  struct list_elem *e;
+  for (e = list_begin(&wait_list); e != list_end(&wait_list); e = list_next(e)) {
+    struct thread *wt = list_entry(e, struct thread, waitelem);
+    if (wt->sleep_end_tick <= timer_ticks()) {
+      wt->sleep_end_tick = 0;
+      list_remove (&wt->waitelem);
+      thread_unblock(wt);
+    }
+  }
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
