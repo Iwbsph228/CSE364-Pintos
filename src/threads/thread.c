@@ -341,7 +341,9 @@ void thread_awake (void) {
       thread_unblock(st);
     }
   }
-}
+} 
+// commit test
+// ??
 
 void thread_sleep (int64_t ticks) {
   if (ticks <= 0) // validating input error
