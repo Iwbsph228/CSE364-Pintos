@@ -348,9 +348,7 @@ void thread_awake (int64_t ticks) {
       thread_unblock(st);
     }
   }
-} 
-// commit test
-// ??
+}
 
 void thread_sleep (int64_t ticks) {
   if (ticks <= 0) // validating input error
@@ -388,7 +386,9 @@ thread_foreach (thread_action_func *func, void *aux)
 }
 
 /* For project1 - task: priority */
-bool compare_priority(const struct list_elem *a, const struct list_elem *b, void *aux) {
+bool
+compare_priority(const struct list_elem *a, const struct list_elem *b, void *aux) 
+{
   struct thread *t1 = list_entry(a, struct thread, elem);
   struct thread *t2 = list_entry(b, struct thread, elem);
   if (t1->priority < t2->priority) // if t1's priority is up than t2, return true
