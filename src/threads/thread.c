@@ -29,7 +29,7 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
-static struct list wait_list;
+static struct list sleep_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -95,7 +95,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-  list_init (&wait_list);
+  list_init (&sleep_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -321,19 +321,44 @@ thread_yield (void)
   intr_set_level (old_level);
 }
 
+/* If the thread in sleep_list is satisfying the condition
+   that ticks over than sleep_end_ticks, save in ready list
+   and change the state into ready. */
 void thread_awake (void) {
   // check the interrupt is off state
   ASSERT(intr_get_level() == INTR_OFF);
-
+  // if sleep_list is empty, then return
+  if (list_empty(&sleep_list))
+    return;
+  
   struct list_elem *e;
-  for (e = list_begin(&wait_list); e != list_end(&wait_list); e = list_next(e)) {
-    struct thread *wt = list_entry(e, struct thread, waitelem);
-    if (wt->sleep_end_tick <= timer_ticks()) {
-      wt->sleep_end_tick = 0;
-      list_remove (&wt->waitelem);
-      thread_unblock(wt);
+  for (e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)) {
+    struct thread *st = list_entry(e, struct thread, sleepelem);
+    if (st->sleep_end_tick <= timer_ticks()) {
+      /* set sleep_end_tick initialize, and remove thread in sleep list and unblock */
+      st->sleep_end_tick = 0;
+      list_remove (&st->sleepelem);
+      thread_unblock(st);
     }
   }
+}
+
+void thread_sleep (int64_t ticks) {
+  if (ticks <= 0) // validating input error
+    return;
+  
+  struct thread *cur = thread_current();
+  enum intr_level old_level;
+  ASSERT(cur != idle_thread);
+
+  old_level = intr_disable(); // make interrupt off
+
+  /* save thread in sleep_list with ticks, and block the thread */
+  cur->sleep_end_tick = ticks + timer_ticks();
+  list_push_back(&sleep_list, &cur->sleepelem);
+  thread_block();
+
+  intr_set_level(old_level);  // make interrupt on
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
